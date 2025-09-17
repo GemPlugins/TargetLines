@@ -1,8 +1,8 @@
 ﻿using Dalamud.Interface.Windowing;
 
-namespace TargetLines;
+namespace TargetLines.UI.Windows;
 
-internal static class Windows {
+public static class Windows {
     public static WindowSystem System { get; set; } = null!;
     public static ConfigWindow Config { get; set; } = null!;
 

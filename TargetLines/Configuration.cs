@@ -1,4 +1,4 @@
-﻿using Dalamud.Configuration;
+using Dalamud.Configuration;
 using DrahsidLib;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using Newtonsoft.Json;
@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
-using static TargetLines.ClassJobHelper;
+using static TargetLines.GameLogic.ClassJobHelper;
 
 namespace TargetLines;
 
@@ -167,7 +167,9 @@ public class SavedConfig {
     public float PlayerHeightBump = 0.0f;
     public float EnemyHeightBump = 0.0f;
     public float LineThickness = 16.0f;
-    public float OutlineThickness = 20.0f;
+    public float OutlineThickness = 0.5f;
+    public float OutlineDistance = 0.5f;
+    public float OutlineFadeRatio = 0.5f;
     public float NewTargetEaseTime = 0.25f;
     public float NoTargetFadeTime = 0.25f;
     public float WaveAmplitudeOffset = 0.175f;
@@ -191,6 +193,7 @@ public class SavedConfig {
     public bool UseScreenSpaceLOD = true;
     public bool ViewAngleSampling = true;
     public LinePartyMode LinePartyMode = LinePartyMode.None;
+    public int MaxTargetLines = 100;
 
     public bool DebugDynamicSampleCount = false;
     public bool DebugUICollision = false;
@@ -198,7 +201,9 @@ public class SavedConfig {
     public bool DebugUICollisionArea = true;
     public bool DebugUIInitialRectList = true;
     public bool DebugUIMergedRectList = true;
-    public bool DebugDXLines = false;
+    [Obsolete] public bool DebugDXLines = false;
+    public bool DebugDepthTexture = false;
+    public bool DebugUIMaskTexture = false;
 
     public LineColor LineColor = new LineColor(new RGBA(0xC0, 0x80, 0x80, 0x80), new RGBA(0x80, 0x00, 0x00, 0x00), true); // fallback color
     public LineDeathAnimation DeathAnimation = LineDeathAnimation.Linear;

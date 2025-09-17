@@ -5,9 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
-using static TargetLines.ClassJobHelper;
+using static TargetLines.GameLogic.ClassJobHelper;
+using TargetLines.GameLogic;
 
-namespace TargetLines;
+namespace TargetLines.UI.Windows;
 
 internal enum ConfigPerformanceImpact {
     Beneficial,
@@ -17,7 +18,7 @@ internal enum ConfigPerformanceImpact {
     High
 }
 
-internal class ConfigWindow : WindowWrapper {
+public class ConfigWindow : WindowWrapper {
     public static string ConfigWindowName = "Target Lines Config";
     private static Vector2 MinSize = new Vector2(240, 240);
 
@@ -503,9 +504,19 @@ internal class ConfigWindow : WindowWrapper {
                 ImGui.SetTooltip("The thickness of the line. 0 will disable the line");
             }
 
-            should_save |= ImGui.SliderFloat("Outline Thickness", ref Globals.Config.saved.OutlineThickness, 0.0f, 72.0f);
+            should_save |= ImGui.SliderFloat("Outline Start Position", ref Globals.Config.saved.OutlineThickness, 0.0f, 1.0f);
             if (ImGui.IsItemHovered()) {
-                ImGui.SetTooltip("The thickness of the outline. 0 will disable the outline");
+                ImGui.SetTooltip("Where the outline starts (0 = center, 0.5 = half radius, 1 = edge). Line color is opaque until this point, then fades out.");
+            }
+
+            should_save |= ImGui.SliderFloat("Outline Solid Length", ref Globals.Config.saved.OutlineDistance, 0.0f, 1.0f);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("How much of the remaining distance the outline stays solid (0 = no solid, 1 = solid all the way)");
+            }
+
+            should_save |= ImGui.SliderFloat("Outline Fade Ratio", ref Globals.Config.saved.OutlineFadeRatio, 0.1f, 1.0f);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("How far into the remaining line thickness the outline fades out (0.1 = 10%, 1.0 = 100%)");
             }
 
             ImGui.Spacing();
@@ -588,9 +599,15 @@ internal class ConfigWindow : WindowWrapper {
         should_save |= ImGui.Checkbox("Draw Merged UI Collision Rects (1)", ref Globals.Config.saved.DebugUIMergedRectList);
         should_save |= ImGui.Checkbox("Draw Final UI Collision Rects (2)", ref Globals.Config.saved.DebugUIFinalRectList);
         should_save |= ImGui.Checkbox("Draw the result of clipping (drawable areas)", ref Globals.Config.saved.DebugUICollisionArea);
-        should_save |= ImGui.Checkbox("Debug DX Lines", ref Globals.Config.saved.DebugDXLines);
+
+        should_save |= ImGui.Checkbox("Debug Depth Texture", ref Globals.Config.saved.DebugDepthTexture);
         if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("Toggling this requires a plugin restart (I am lazy)");
+            ImGui.SetTooltip("Visualize the depth buffer as a grayscale overlay.");
+        }
+
+        should_save |= ImGui.Checkbox("Debug UI Mask", ref Globals.Config.saved.DebugUIMaskTexture);
+        if (ImGui.IsItemHovered()) {
+            ImGui.SetTooltip("Visualize the UI mask showing which areas will occlude lines (white = occluded)");
         }
 
         ImGui.TextDisabled($"Number of rendered lines: {TargetLineManager.RenderedLineCount.ToString()}");
@@ -599,57 +616,69 @@ internal class ConfigWindow : WindowWrapper {
         return should_save;
     }
 
-    public override void Draw() {
+    public override void Draw()
+    {
         bool should_save = false;
         bool node_hover = false;
         bool nest = false;
-        if (ImGui.BeginTabBar("ConfigTabs")) {
-            if (ImGui.BeginTabItem("Filters")) {
+        if (ImGui.BeginTabBar("ConfigTabs"))
+        {
+            if (ImGui.BeginTabItem("Filters"))
+            {
                 nest = true;
                 node_hover = ImGui.IsItemHovered();
                 should_save |= DrawFilters();
                 ImGui.EndTabItem();
             }
-            if (!nest) {
+            if (!nest)
+            {
                 node_hover = ImGui.IsItemHovered();
             }
-            if (node_hover) {
+            if (node_hover)
+            {
                 ImGui.SetTooltip("Configure how and when target lines appear");
             }
 
             node_hover = false;
             nest = false;
-            if (ImGui.BeginTabItem("Visuals")) {
+            if (ImGui.BeginTabItem("Visuals"))
+            {
                 nest = true;
                 node_hover = ImGui.IsItemHovered();
                 should_save |= DrawVisuals();
                 ImGui.EndTabItem();
             }
-            if (!nest) {
+            if (!nest)
+            {
                 node_hover = ImGui.IsItemHovered();
             }
-            if (node_hover) {
+            if (node_hover)
+            {
                 ImGui.SetTooltip("The appearance and performance of target lines");
             }
 
             node_hover = false;
             nest = false;
-            if (ImGui.BeginTabItem("Debug")) {
+            if (ImGui.BeginTabItem("Debug"))
+            {
                 nest = true;
                 node_hover = ImGui.IsItemHovered();
                 should_save |= DrawDebug();
                 ImGui.EndTabItem();
             }
-            if (!nest) {
+            if (!nest)
+            {
                 node_hover = ImGui.IsItemHovered();
             }
-            if (node_hover) {
+            if (node_hover)
+            {
                 ImGui.SetTooltip("Sometimes things are broken");
             }
             ImGui.EndTabBar();
         }
 
-        if (should_save) {
+        if (should_save)
+        {
             Globals.Config.Save();
             TargetLineManager.InitializeTargetLines(); // reset lines
         }

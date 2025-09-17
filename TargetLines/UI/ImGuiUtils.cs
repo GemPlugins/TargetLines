@@ -2,9 +2,9 @@
 using Dalamud.Bindings.ImGui;
 using System;
 
-namespace TargetLines;
+namespace TargetLines.UI;
 
-internal class ImGuiUtils {
+public class ImGuiUtils {
     public static bool WrapBegin(string name, ImGuiWindowFlags flags, Action fn) {
         bool began = false;
 

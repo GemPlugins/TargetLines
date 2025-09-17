@@ -1,28 +1,25 @@
-﻿using FFXIVClientStructs.FFXIV.Common.Component.BGCollision;
-using Dalamud.Interface.Textures;
-using DrahsidLib;
+﻿using DrahsidLib;
 using System;
 using System.Numerics;
+using TargetLines.Rendering;
 
 namespace TargetLines;
 
-internal class Globals {
-    public static double Runtime = 0.0;
-    public static double HandlePvPTime = 0.0;
-    public static bool HandlePvP = false;
+public class Globals {
     public static Configuration Config { get; set; } = null!;
-    public static ISharedImmediateTexture LineTexture { get; set; } = null!;
-    public static ISharedImmediateTexture OutlineTexture { get; set; } = null!;
-    public static ISharedImmediateTexture EdgeTexture { get; set; } = null!;
+    public static Renderer Renderer { get; set; } = null!;
 
-    private static unsafe CSFramework* _Framework { get; set; } = null!;
-    public static unsafe CSFramework* Framework {
-        get {
-            if (_Framework == null) {
-                _Framework = CSFramework.Instance();
-            }
-            return _Framework;
-        }
+    public static unsafe CSFramework* Framework => CSFramework.Instance();
+
+    public static void Initialize()
+    {
+        Renderer = new Renderer();
+    }
+
+    public static void Dispose()
+    {
+        ShaderSingleton.Dispose();
+        Renderer?.Dispose();
     }
 
     public static unsafe Vector3 WorldCamera_GetPos() {
@@ -63,57 +60,10 @@ internal class Globals {
         return false;
     }
 
-    public static unsafe bool IsAngleThetaInsidePerspective(float dot) {
-        if (Service.CameraManager->Camera == null) {
-            return false;
-        }
-
-        var device = FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.Device.Instance();
-        var cam = Service.CameraManager->Camera;
-        float angle = MathF.Acos(dot);
-        float fovy = cam->FoV;
-        float fovx = 2.0f * MathF.Atan(MathF.Tan(cam->FoV * 0.5f) * device->AspectRatio);
-        if (MathF.Abs(angle) <= fovy * 0.5f || MathF.Abs(angle) <= fovx * 0.5f) {
-            return true;
-        }
-
-        return false;
-    }
-
-    public static unsafe float GetAngleThetaToCamera(Vector3 position) {
-        Vector3 cam = WorldCamera_GetPos();
-        Vector3 forward = WorldCamera_GetForward();
-        Vector3 to_camera = Vector3.Normalize(cam - position);
-
-        return Vector3.Dot(to_camera, forward);
-    }
-
-    public static unsafe bool IsVisible(Vector3 position, bool occlusion) {
-        Vector3 cam = WorldCamera_GetPos();
-
-        float dot = GetAngleThetaToCamera(position);
-        // behind camera
-        if (dot < 0) {
-            return false;
-        }
-
-        if (occlusion) {
-            var direction = position - cam;
-            var length = direction.Length();
-
-            if (length != 0) {
-                Vector3 dir = Vector3.Normalize(direction);
-                var flags = stackalloc int[] { 0x4000, 0x4000 }; // should probably figure out what these mean
-                var hit = stackalloc RaycastHit[1];
-                var result = Framework->BGCollisionModule->RaycastMaterialFilter(hit, &cam, &dir, length, 1, flags);
-                return result == false;
-            }
-
-            return false;
-        }
-        else {
-            return true;
-        }
+    public static int AlignSizeTo16Bytes<T>() where T : struct
+    {
+        var size = SharpDX.Utilities.SizeOf<T>();
+        return (size + 15) & ~15;
     }
 }
 

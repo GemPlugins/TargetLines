@@ -1,10 +1,12 @@
-﻿using System;
+using System;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using DrahsidLib;
-using System.IO;
+using TargetLines.GameLogic;
+using TargetLines.Rendering;
+using TargetLines.UI;
 
 namespace TargetLines;
 
@@ -16,20 +18,14 @@ public class Plugin : IDalamudPlugin {
 
     public string Name => "TargetLines";
 
-    private bool WasInPvP = false;
     private bool PlayerWasNull = true;
 
-    private const ImGuiWindowFlags OVERLAY_WINDOW_FLAGS =
-          ImGuiWindowFlags.NoBackground
-        | ImGuiWindowFlags.NoDecoration
-        | ImGuiWindowFlags.NoFocusOnAppearing
-        | ImGuiWindowFlags.NoInputs
-        | ImGuiWindowFlags.NoMove
-        | ImGuiWindowFlags.NoSavedSettings
+    public const ImGuiWindowFlags OVERLAY_WINDOW_FLAGS =
+          ImGuiWindowFlags.NoInputs
         | ImGuiWindowFlags.NoNav
         | ImGuiWindowFlags.NoTitleBar
         | ImGuiWindowFlags.NoScrollbar
-        | ImGuiWindowFlags.AlwaysUseWindowPadding;
+        | ImGuiWindowFlags.NoBackground;
 
     public Plugin(IDalamudPluginInterface pluginInterface, ICommandManager commandManager, IChatGui chat, IClientState clientState) {
         PluginInterface = pluginInterface;
@@ -41,21 +37,8 @@ public class Plugin : IDalamudPlugin {
 
         InitializeCommands();
         InitializeConfig();
+        Globals.Initialize();
         InitializeUI();
-
-        // as it turns out there's some folks making "true pvp" builds of this plugin, so let's have some fun with them
-        if (pluginInterface.InternalName.ToLower().Contains("pvp")) {
-            Globals.HandlePvP = true;
-        }
-
-        var texture_line_path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "Data/TargetLine.png");
-        var texture_outline_path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "Data/TargetLineOutline.png");
-        var texture_edge_path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "Data/TargetEdge.png");
-
-
-        Globals.LineTexture = Service.TextureProvider.GetFromFile(texture_line_path);
-        Globals.OutlineTexture = Service.TextureProvider.GetFromFile(texture_outline_path);
-        Globals.EdgeTexture = Service.TextureProvider.GetFromFile(texture_edge_path);
 
         TargetLineManager.InitializeTargetLines();
     }
@@ -76,30 +59,22 @@ public class Plugin : IDalamudPlugin {
     }
 
     private void InitializeUI() {
-        Windows.Initialize();
+        TargetLines.UI.Windows.Windows.Initialize();
         PluginInterface.UiBuilder.Draw += OnDraw;
         PluginInterface.UiBuilder.OpenConfigUi += Commands.ToggleConfig;
     }
 
     private unsafe void DrawOverlay() {
-        Globals.Runtime += Globals.Framework->FrameDeltaTime;
-
-        if (Globals.HandlePvP) {
-            if (WasInPvP != Service.ClientState.IsPvP) {
-                Globals.HandlePvPTime = 0.0f;
-                WasInPvP = Service.ClientState.IsPvP;
-            }
-
-            if (Service.ClientState.IsPvP) {
-                Globals.HandlePvPTime += Globals.Framework->FrameDeltaTime;
-            }
-        }
-
         TargetLineManager.DrawOverlay();
     }
 
     private void OnDraw() {
-        Windows.System.Draw();
+        if (ShaderSingleton.ShowingProgress) {
+            ShaderSingleton.DrawShaderCompilationProgress();
+        }
+
+        Globals.Renderer?.OnStartFrame();
+        TargetLines.UI.Windows.Windows.System.Draw();
 
         if (Service.ClientState.LocalPlayer == null) {
             PlayerWasNull = true;
@@ -129,6 +104,8 @@ public class Plugin : IDalamudPlugin {
                 }
             }
         }
+
+        Globals.Renderer?.OnEndFrame();
     }
 
 #region IDisposable Support
@@ -140,11 +117,11 @@ public class Plugin : IDalamudPlugin {
         PluginInterface.SavePluginConfig(Globals.Config);
 
         PluginInterface.UiBuilder.Draw -= OnDraw;
-        Windows.Dispose();
+        Globals.Dispose();
+        TargetLines.UI.Windows.Windows.Dispose();
         PluginInterface.UiBuilder.OpenConfigUi -= Commands.ToggleConfig;
 
         Commands.Dispose();
-        SwapChainHook.Dispose();
     }
 
     public void Dispose() {

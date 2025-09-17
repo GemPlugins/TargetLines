@@ -1,4 +1,4 @@
-﻿namespace TargetLines;
+﻿namespace TargetLines.Utilities.Extensions;
 
 using DrahsidLib;
 using System.Numerics;

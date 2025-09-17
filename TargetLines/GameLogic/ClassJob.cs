@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace TargetLines; 
+namespace TargetLines.GameLogic; 
 public static class ClassJobHelper {
     public enum TargetFlags : int {
         /* 0x0001 */ Any = (1 << 0),        // any entity

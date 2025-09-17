@@ -5,26 +5,13 @@ using DrahsidLib;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using System.Runtime.InteropServices;
-using static TargetLines.ClassJobHelper;
+using static TargetLines.GameLogic.ClassJobHelper;
 
-namespace TargetLines;
+namespace TargetLines.GameLogic;
 
 public static class GameObjectExtensions {
-    public static unsafe float GetScale(this IGameObject obj) {
-        CSGameObject* _obj = (CSGameObject*)obj.Address;
-        return _obj->Scale;
-    }
-
-    public static bool IsVisible(this IGameObject obj, bool occlusion) {
-        Vector3 safePos = obj.Position;
-        safePos.Y += 0.1f;
-
-        if (obj.GetScale() == 0.0f) {
-            return false;
-        }
-
-        return Globals.IsVisible(obj.GetHeadPosition(), occlusion);
-    }
+    const int CursorHeightOffset = 0x124;
+    const float HeadHeightOffset = -0.2f;
 
     public static unsafe bool TargetIsTargetable(this IGameObject obj) {
         if (obj.TargetObject == null) {
@@ -34,44 +21,12 @@ public static class GameObjectExtensions {
         return targetobj->GetIsTargetable();
     }
 
-    public static Vector3 GetHeadPosition(this IGameObject obj) {
-        Vector3 pos = obj.Position;
-        pos.Y += obj.GetCursorHeight() - 0.2f;
-        return pos;
-    }
-
-    const int CursorHeightOffset = 0x124;
-
-    public static float GetCursorHeight(this IGameObject obj)
-    {
-        return Marshal.PtrToStructure<float>(obj.Address + CursorHeightOffset);
-    }
-
-    public static float GetHeadHeight(this IGameObject obj)
-    {
-        return Marshal.PtrToStructure<float>(obj.Address + CursorHeightOffset) - 0.2f;
-    }
-
-    public static bool GetIsPlayerCharacter(this IGameObject obj) {
-        return obj.ObjectKind == ObjectKind.Player;
-    }
-
-    public static bool GetIsBattleNPC(this IGameObject obj) {
-        return obj.ObjectKind == ObjectKind.BattleNpc;
-    }
-
-    public static bool GetIsBattleChara(this IGameObject obj) {
-        return obj is IBattleChara;
-    }
-
-    public static IPlayerCharacter GetPlayerCharacter(this IGameObject obj) {
-        return obj as IPlayerCharacter;
-    }
-
-    public static unsafe CSGameObject* GetClientStructGameObject(this IGameObject obj)
-    {
-        return (CSGameObject*)obj.Address;
-    }
+    public static float GetHeadHeight(this IGameObject obj) => Marshal.PtrToStructure<float>(obj.Address + CursorHeightOffset) + HeadHeightOffset;
+    public static bool GetIsPlayerCharacter(this IGameObject obj) => obj.ObjectKind == ObjectKind.Player;
+    public static bool GetIsBattleNPC(this IGameObject obj) => obj.ObjectKind == ObjectKind.BattleNpc;
+    public static bool GetIsBattleChara(this IGameObject obj) => obj is IBattleChara;
+    public static IPlayerCharacter GetPlayerCharacter(this IGameObject obj) => obj as IPlayerCharacter;
+    public static unsafe CSGameObject* GetClientStructGameObject(this IGameObject obj) => (CSGameObject*)obj.Address;
 
     public static unsafe TargetSettings GetTargetSettings(this IGameObject obj) {
         TargetSettings settings = new TargetSettings();

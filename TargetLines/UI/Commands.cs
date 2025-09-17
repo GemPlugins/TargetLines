@@ -1,9 +1,9 @@
 ﻿using Dalamud.Game.Command;
 using DrahsidLib;
 
-namespace TargetLines;
+namespace TargetLines.UI;
 
-internal static class Commands {
+public static class Commands {
     public static void Initialize() {
         Service.CommandManager.AddHandler("/ptlines", new CommandInfo(OnPTLines)
         {
@@ -23,12 +23,13 @@ internal static class Commands {
         Service.CommandManager.RemoveHandler("/ttl");
     }
 
+
     public static void ToggleConfig() {
-        Windows.Config.IsOpen = !Windows.Config.IsOpen;
+        TargetLines.UI.Windows.Windows.Config.IsOpen = !TargetLines.UI.Windows.Windows.Config.IsOpen;
     }
 
     public static void OnPTLines(string command, string args) {
-        Windows.Config.IsOpen = !Windows.Config.IsOpen;
+        TargetLines.UI.Windows.Windows.Config.IsOpen = !TargetLines.UI.Windows.Windows.Config.IsOpen;
     }
 
     private static void OnTTL(string command, string args) {
