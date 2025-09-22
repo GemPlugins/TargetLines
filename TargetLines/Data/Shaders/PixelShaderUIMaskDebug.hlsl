@@ -10,5 +10,5 @@ struct PS_INPUT
 float4 Main(PS_INPUT input) : SV_TARGET
 {
     float4 backBufferColor = BackBufferTexture.Sample(BackBufferSampler, input.TexCoord);
-    return float4(1.0f, 1.0f, 1.0f, backBufferColor.a);
+    return float4(1.0f, 0.0f, 0.0f, backBufferColor.a);
 }
