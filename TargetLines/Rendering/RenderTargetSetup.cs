@@ -30,6 +30,13 @@ public class RenderTargetSetup : IDisposable
         [FieldOffset(0x08)] public float Far;
     }
 
+    [StructLayout(LayoutKind.Explicit, Size = 0x08)]
+    private struct ConstantBuffer_UIMaskDebug
+    {
+        [FieldOffset(0x00)] public float RezoScale;
+        [FieldOffset(0x04)] public bool UseRezoScale;
+    }
+
     private Buffer? vertexBuffer;
     private Buffer? indexBuffer;
     private InputLayout? layout;
@@ -37,6 +44,9 @@ public class RenderTargetSetup : IDisposable
 
     private ConstantBuffer_DepthDebug depthDebugConstantBuffer;
     private Buffer? depthDebugConstantBufferBuffer;
+
+    private ConstantBuffer_UIMaskDebug uiMaskConstantBuffer;
+    private Buffer? uiMaskConstantBufferBuffer;
 
     private static float previousRezoScale = 0;
     private static int previousWidth = 0;
@@ -47,6 +57,9 @@ public class RenderTargetSetup : IDisposable
 
     private static ShaderResourceView? backBufferShaderResourceView;
     private static Vector2 backBufferSize = Vector2.Zero;
+
+    private static ShaderResourceView? backBufferNoUIShaderResourceView;
+    private static Vector2 backBufferNoUISize = Vector2.Zero;
 
     private static readonly DebugVertex[] FullScreenQuad = new DebugVertex[]
     {
@@ -61,6 +74,7 @@ public class RenderTargetSetup : IDisposable
     public RenderTargetSetup()
     {
         depthDebugConstantBuffer = new ConstantBuffer_DepthDebug();
+        uiMaskConstantBuffer = new ConstantBuffer_UIMaskDebug();
 
         InitializeBuffers();
 
@@ -97,8 +111,14 @@ public class RenderTargetSetup : IDisposable
         indexBuffer = null;
         depthDebugConstantBufferBuffer?.Dispose();
         depthDebugConstantBufferBuffer = null;
+        uiMaskConstantBufferBuffer?.Dispose();
+        uiMaskConstantBufferBuffer = null;
         depthShaderResourceView?.Dispose();
         depthShaderResourceView = null;
+        backBufferShaderResourceView?.Dispose();
+        backBufferShaderResourceView = null;
+        backBufferNoUIShaderResourceView?.Dispose();
+        backBufferNoUIShaderResourceView = null;
     }
 
     private void InitializeBuffers()
@@ -128,6 +148,9 @@ public class RenderTargetSetup : IDisposable
         vertexBufferBinding = new VertexBufferBinding(vertexBuffer, SharpDX.Utilities.SizeOf<DebugVertex>(), 0);
         var cbSize = Globals.AlignSizeTo16Bytes<ConstantBuffer_DepthDebug>();
         depthDebugConstantBufferBuffer = new Buffer(Globals.Renderer.Device, cbSize, ResourceUsage.Default, BindFlags.ConstantBuffer, CpuAccessFlags.None, ResourceOptionFlags.None, 0);
+
+        cbSize = Globals.AlignSizeTo16Bytes<ConstantBuffer_UIMaskDebug>();
+        uiMaskConstantBufferBuffer = new Buffer(Globals.Renderer.Device, cbSize, ResourceUsage.Default, BindFlags.ConstantBuffer, CpuAccessFlags.None, ResourceOptionFlags.None, 0);
     }
 
 
@@ -175,7 +198,7 @@ public class RenderTargetSetup : IDisposable
     public static unsafe void SetupBackBuffer()
     {
         var renderTargetManager = RenderTargetManager.Instance();
-        if (renderTargetManager == null || renderTargetManager->BackBuffer == null)
+        if (renderTargetManager == null || renderTargetManager->BackBuffer == null || renderTargetManager->BackBuffer == null)
         {
             Service.Logger.Debug("BackBuffer null");
             return;
@@ -189,7 +212,7 @@ public class RenderTargetSetup : IDisposable
             var currentSize = new Vector2(textureDesc.Width, textureDesc.Height);
             bool resolutionChanged = false;
 
-            if (currentSize != depthTextureSize)
+            if (currentSize != backBufferSize)
             {
                 resolutionChanged = true;
             }
@@ -209,6 +232,40 @@ public class RenderTargetSetup : IDisposable
                 backBufferShaderResourceView?.Dispose();
                 backBufferShaderResourceView = new ShaderResourceView((IntPtr)backBuffer->D3D11ShaderResourceView);
                 backBufferSize = currentSize;
+            }
+
+
+            nativeTexture.Dispose();
+        }
+
+        var backBufferNoUI = renderTargetManager->BackBufferNoUI;
+        if (backBufferNoUI->D3D11ShaderResourceView != null)
+        {
+            var nativeTexture = new Texture2D((IntPtr)backBufferNoUI->D3D11Texture2D);
+            var textureDesc = nativeTexture.Description;
+            var currentSize = new Vector2(textureDesc.Width, textureDesc.Height);
+            bool resolutionChanged = false;
+
+            if (currentSize != backBufferNoUISize)
+            {
+                resolutionChanged = true;
+            }
+
+            if (GraphicsConfig.Instance()->GraphicsRezoScale != previousRezoScale)
+            {
+                resolutionChanged = true;
+            }
+
+            if (Globals.Renderer.ViewportSize.X != previousWidth || Globals.Renderer.ViewportSize.Y != previousHeight)
+            {
+                resolutionChanged = true;
+            }
+
+            if (resolutionChanged || backBufferNoUIShaderResourceView == null)
+            {
+                backBufferNoUIShaderResourceView?.Dispose();
+                backBufferNoUIShaderResourceView = new ShaderResourceView((IntPtr)backBufferNoUI->D3D11ShaderResourceView);
+                backBufferNoUISize = currentSize;
             }
 
             nativeTexture.Dispose();
@@ -233,6 +290,16 @@ public class RenderTargetSetup : IDisposable
     public static Vector2 GetBackBufferSize()
     {
         return backBufferSize;
+    }
+
+    public static ShaderResourceView? GetBackBufferNoUIShaderResourceView()
+    {
+        return backBufferNoUIShaderResourceView;
+    }
+
+    public static Vector2 GetBackBufferNoUISize()
+    {
+        return backBufferNoUISize;
     }
 
     private unsafe void RenderDepthTexture()
@@ -342,7 +409,7 @@ public class RenderTargetSetup : IDisposable
 
     private unsafe void RenderUIMaskDebug()
     {
-        if (Globals.Renderer?.DeviceContext == null || vertexBuffer == null || indexBuffer == null || layout == null)
+        if (Globals.Renderer?.DeviceContext == null || vertexBuffer == null || indexBuffer == null || uiMaskConstantBufferBuffer == null || layout == null)
         {
             return;
         }
@@ -363,6 +430,20 @@ public class RenderTargetSetup : IDisposable
             return;
         }
 
+        if (backBufferNoUIShaderResourceView == null)
+        {
+            Service.Logger.Debug("backBufferNoUIShaderResourceView null");
+            return;
+        }
+
+        unsafe
+        {
+            uiMaskConstantBuffer.RezoScale = GraphicsConfig.Instance()->GraphicsRezoScale;
+            uiMaskConstantBuffer.UseRezoScale = GraphicsConfig.Instance()->GraphicsRezoUpscaleType != 0;
+        }
+
+        Globals.Renderer.DeviceContext.UpdateSubresource(ref uiMaskConstantBuffer, uiMaskConstantBufferBuffer);
+
         // Set up pipeline
         Globals.Renderer.DeviceContext.InputAssembler.InputLayout = layout;
         Globals.Renderer.DeviceContext.InputAssembler.PrimitiveTopology = SharpDX.Direct3D.PrimitiveTopology.TriangleList;
@@ -372,8 +453,12 @@ public class RenderTargetSetup : IDisposable
         Globals.Renderer.DeviceContext.VertexShader.Set(vertexShader);
         Globals.Renderer.DeviceContext.PixelShader.Set(pixelShader);
 
+        Globals.Renderer.DeviceContext.VertexShader.SetConstantBuffer(0, uiMaskConstantBufferBuffer);
+        Globals.Renderer.DeviceContext.PixelShader.SetConstantBuffer(0, uiMaskConstantBufferBuffer);
+
         // Bind BackBuffer texture to pixel shader
         Globals.Renderer.DeviceContext.PixelShader.SetShaderResource(0, backBufferShaderResourceView);
+        Globals.Renderer.DeviceContext.PixelShader.SetShaderResource(1, backBufferNoUIShaderResourceView);
 
         var samplerDesc = new SamplerStateDescription()
         {
@@ -430,6 +515,9 @@ public class RenderTargetSetup : IDisposable
         }
 
         backBufferShaderResourceView?.Dispose();
+        backBufferNoUIShaderResourceView?.Dispose();
+        backBufferShaderResourceView = null;
+        backBufferNoUIShaderResourceView = null;
     }
 
     public void OnFrame(double _time)

@@ -1,3 +1,9 @@
+cbuffer UIMaskConstantBuffer : register(b0)
+{
+    float RezoScale;
+    bool UseRezoScale;
+}
+
 struct VS_INPUT
 {
     float3 Position : POSITION;

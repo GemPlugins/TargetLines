@@ -249,7 +249,7 @@ public static class TargetLineManager
         }
 
         // Create other actors if not in debug mode
-        if (!Globals.Config.saved.DebugDepthTexture && !Globals.Config.saved.DebugUIMaskTexture)
+        /*if (!Globals.Config.saved.DebugDepthTexture && !Globals.Config.saved.DebugUIMaskTexture)
         {
             if (TestTriangle == null && !ShaderSingleton.Fail) {
                 try
@@ -263,7 +263,7 @@ public static class TargetLineManager
             }
 
             // Test LineActor
-            /*if (TestLine == null && !ShaderSingleton.Fail) {
+            if (TestLine == null && !ShaderSingleton.Fail) {
                 try
                 {
                     TestLine = new LineActor();
@@ -273,8 +273,8 @@ public static class TargetLineManager
                 {
                     Service.Logger.Error($"Failed to create LineActor: {ex}");
                 }
-            }*/
-        }
+            }
+        }*/
 
         if (TestLine != null)
         {
