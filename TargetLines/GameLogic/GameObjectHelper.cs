@@ -25,7 +25,7 @@ public static class GameObjectExtensions {
     public static bool GetIsPlayerCharacter(this IGameObject obj) => obj.ObjectKind == ObjectKind.Player;
     public static bool GetIsBattleNPC(this IGameObject obj) => obj.ObjectKind == ObjectKind.BattleNpc;
     public static bool GetIsBattleChara(this IGameObject obj) => obj is IBattleChara;
-    public static IPlayerCharacter GetPlayerCharacter(this IGameObject obj) => obj as IPlayerCharacter;
+    public static IPlayerCharacter? GetPlayerCharacter(this IGameObject obj) => obj as IPlayerCharacter;
     public static unsafe CSGameObject* GetClientStructGameObject(this IGameObject obj) => (CSGameObject*)obj.Address;
 
     public static unsafe TargetSettings GetTargetSettings(this IGameObject obj) {

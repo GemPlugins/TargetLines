@@ -965,7 +965,7 @@
       "drahsidlib": {
         "type": "Project",
         "dependencies": {
-          "DalamudPackager": "[13.0.0, )"
+          "DalamudPackager": "[13.1.0, )"
         }
       }
     }

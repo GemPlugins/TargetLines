@@ -1,11 +1,12 @@
-using Dalamud.Bindings.ImGui;
-using Dalamud.Interface.Utility;
-using DrahsidLib;
-using SharpDX;
-using SharpDX.Direct3D11;
 using System;
 using System.Diagnostics;
 using System.Numerics;
+using DrahsidLib;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Hooking;
+using Dalamud.Interface.Utility;
+using SharpDX;
+using SharpDX.Direct3D11;
 using Vector2 = System.Numerics.Vector2;
 using Vector3 = System.Numerics.Vector3;
 using Vector4 = System.Numerics.Vector4;
@@ -17,7 +18,7 @@ public class Renderer : IDisposable {
     public event OnFrameDelegate OnFrameEvent;
 
     public double Time;
-    private Stopwatch stopwatch;
+    private readonly Stopwatch stopwatch;
 
     public Device? Device { get; private set; }
     public DeviceContext? DeviceContext { get; private set; }
@@ -33,6 +34,10 @@ public class Renderer : IDisposable {
     public float NearPlane = 0;
     public float FarPlane = 0;
 
+    private delegate IntPtr EnvironmentManagerUpdateDelegate(IntPtr thisx, nint unk1);
+    private static Hook<EnvironmentManagerUpdateDelegate>? EnvironmentManagerUpdateHook { get; set; } = null!;
+    private static IntPtr EnvironmentManagerUpdateAddress = IntPtr.Zero;
+
     public unsafe Renderer() {
         Time = 0;
         stopwatch = new Stopwatch();
@@ -42,6 +47,16 @@ public class Renderer : IDisposable {
         Device = new Device((IntPtr)FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.Device.Instance()->D3D11Forwarder);
         DeviceContext = new DeviceContext(Device);
         _ = ShaderSingleton.InitializeAsync(Device);
+
+        if (EnvironmentManagerUpdateAddress == IntPtr.Zero)
+        {
+            IntPtr EnvironmentManagerUpdateAddress = Service.SigScanner.ScanText("48 89 5C 24 ?? 55 56 57 41 55 41 56 48 8D AC 24 ?? ?? ?? ?? 48 81 EC ?? ?? ?? ?? 48 8B 05");
+            if (EnvironmentManagerUpdateAddress != IntPtr.Zero)
+            {
+                EnvironmentManagerUpdateHook = Service.GameInteropProvider.HookFromAddress<EnvironmentManagerUpdateDelegate>(EnvironmentManagerUpdateAddress, EnvironmentManagerUpdateDetour);
+                EnvironmentManagerUpdateHook?.Enable();
+            }
+        }
     }
 
     public void Dispose() {
@@ -49,6 +64,9 @@ public class Renderer : IDisposable {
         stopwatch.Stop();
         RenderTarget?.Dispose();
         DeviceContext?.Dispose();
+        EnvironmentManagerUpdateHook?.Disable();
+        EnvironmentManagerUpdateHook?.Dispose();
+        EnvironmentManagerUpdateAddress = IntPtr.Zero;
     }
 
     private void Execute() {
@@ -61,8 +79,6 @@ public class Renderer : IDisposable {
     public void OnStartFrame() {
         Time = stopwatch.Elapsed.TotalSeconds;
         if (DeviceContext == null) return;
-
-        UpdateCameraMatrices();
 
         if (RenderTarget == null || RenderTarget.Size != ViewportSize)
         {
@@ -98,29 +114,37 @@ public class Renderer : IDisposable {
     {
     }
 
-    private unsafe void UpdateCameraMatrices()
+    private static unsafe void UpdateCameraMatrices()
     {
         var controlCamera = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager.Instance()->GetActiveCamera();
         var renderCamera = controlCamera != null ? controlCamera->SceneCamera.RenderCamera : null;
         if (renderCamera == null) return;
 
-        CameraPosition = renderCamera->Origin;
+        Globals.Renderer.CameraPosition = renderCamera->Origin;
 
-        ViewMatrix = renderCamera->ViewMatrix;
-        ViewMatrix.M44 = 1; // for whatever reason, game doesn't initialize it...
-        ProjectionMatrix = renderCamera->ProjectionMatrix;
-        ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
-        NearPlane = renderCamera->NearPlane;
-        FarPlane = renderCamera->FarPlane;
+        Globals.Renderer.ViewMatrix = renderCamera->ViewMatrix;
+        Globals.Renderer.ViewMatrix.M44 = 1; // for whatever reason, game doesn't initialize it...
+        Globals.Renderer.ProjectionMatrix = renderCamera->ProjectionMatrix;
+        Globals.Renderer.ViewProjectionMatrix = Globals.Renderer.ViewMatrix * Globals.Renderer.ProjectionMatrix;
+        Globals.Renderer.NearPlane = renderCamera->NearPlane;
+        Globals.Renderer.FarPlane = renderCamera->FarPlane;
 
         var device = FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.Device.Instance();
         if (device != null)
         {
-            ViewportSize = new Vector2(device->Width, device->Height);
+            Globals.Renderer.ViewportSize = new Vector2(device->Width, device->Height);
         }
         else
         {
             Service.Logger.Warning("UpdateCameraMatrices: device is null!");
         }
     }
+
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+    private static IntPtr EnvironmentManagerUpdateDetour(IntPtr thisx, nint unk1)
+    {
+        UpdateCameraMatrices();
+        return EnvironmentManagerUpdateHook.OriginalDisposeSafe(thisx, unk1);
+    }
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
 }

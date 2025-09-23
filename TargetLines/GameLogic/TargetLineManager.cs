@@ -22,8 +22,6 @@ public static class TargetLineManager
     private static LineActor? TestLine = null;
     private static RenderTargetSetup? DebugActor = null;
 
-    private static bool TestWindowDraw = true;
-
     public static void InitializeTargetLines()
     {
         Vector3Extensions.Tests();
