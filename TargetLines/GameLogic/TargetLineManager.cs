@@ -27,7 +27,7 @@ public static class TargetLineManager
     public static void InitializeTargetLines()
     {
         Vector3Extensions.Tests();
-        ResetDebugActors();
+        //ResetDebugActors();
     }
 
     public static void InitializeLineActors()
