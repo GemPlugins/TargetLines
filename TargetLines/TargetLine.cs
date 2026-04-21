@@ -1,4 +1,4 @@
-﻿using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Game.ClientState.Objects.Types;
 using DrahsidLib;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
@@ -1025,7 +1025,7 @@ public unsafe class TargetLine {
     {
         var target = GetTargetObject();
 
-        if (Self == null || Self.IsValid() == false)
+        if (Self == null || !Self.IsValid())
         {
             Sleeping = true;
             return;
@@ -1037,7 +1037,7 @@ public unsafe class TargetLine {
             return;
         }
 
-        if (((csObj->RenderFlags & 0x800) != 0 || Self.IsDead) && State != LineState.Dying2)
+        if ((((ulong)csObj->RenderFlags & 0x800) != 0 || Self.IsDead) && State != LineState.Dying2)
         {
             State = LineState.Dying2;
             StateTime = 0;

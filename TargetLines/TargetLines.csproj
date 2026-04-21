@@ -1,10 +1,12 @@
-﻿<Project Sdk="Dalamud.NET.Sdk/13.0.0">
+﻿<Project Sdk="Dalamud.NET.Sdk/14.0.2">
 	<PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0-windows</TargetFramework>
         <LangVersion>preview</LangVersion>
         <NoWarn>1701;1702;CS0472;CA1416</NoWarn>
 		<Configurations>Debug;Release;Unlocked</Configurations>
-    </PropertyGroup>
+		<OutputPath>bin/</OutputPath>
+		<OutDir>$(OutputPath)</OutDir>
+	</PropertyGroup>
 
     <PropertyGroup>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
