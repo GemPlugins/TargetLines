@@ -41,6 +41,7 @@
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 			<Visible>false</Visible>
 		</Content>
+		<Content Include="TargetLines.json" />
   	</ItemGroup>
 
 	<ItemGroup>
